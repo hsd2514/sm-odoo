@@ -53,8 +53,13 @@ const Login = () => {
             LOGIN
           </Button>
         </form>
-        <div className="mt-4 text-center">
-            <a href="/signup" className="font-bold hover:underline">Need an account? Sign up</a>
+        <div className="mt-4 text-center space-y-2">
+            <div>
+              <a href="/signup" className="font-bold hover:underline">Need an account? Sign up</a>
+            </div>
+            <div>
+              <a href="/forgot-password" className="font-bold hover:underline text-blue-600">Forgot Password?</a>
+            </div>
         </div>
       </div>
     </div>
