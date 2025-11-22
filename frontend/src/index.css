@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+:root {
+  --color-neo-bg: #fdfd96;
+  --color-neo-main: #ff6b6b;
+  --color-neo-accent: #4ecdc4;
+  --color-neo-dark: #1a1a1a;
+  --color-neo-white: #ffffff;
+}
+
+body {
+  background-color: var(--color-neo-bg);
+  color: var(--color-neo-dark);
+}
+
+.neo-box {
+  border: 2px solid var(--color-neo-dark);
+  box-shadow: var(--shadow-neo);
+  background-color: var(--color-neo-white);
+}
+
+.neo-btn {
+  border: 2px solid var(--color-neo-dark);
+  box-shadow: var(--shadow-neo);
+  background-color: var(--color-neo-main);
+  color: var(--color-neo-white);
+  font-weight: bold;
+  transition: all 0.1s;
+}
+
+.neo-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-neo-sm);
+}
+
+.neo-input {
+  border: 2px solid var(--color-neo-dark);
+  box-shadow: var(--shadow-neo-sm);
+  padding: 0.5rem;
+  outline: none;
+}
+
+.neo-input:focus {
+  box-shadow: var(--shadow-neo);
+}
