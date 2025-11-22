@@ -1,5 +1,6 @@
 import React from 'react';
 import api from '../services/api';
+import { handleApiError } from '../utils/errorHandler';
 import Button from '../components/ui/Button';
 import { FileDown } from 'lucide-react';
 
@@ -37,19 +38,18 @@ const Reports = () => {
         window.URL.revokeObjectURL(url);
       }, 100);
     } catch (error) {
-      console.error("Failed to export", error);
       // Try to extract error message from blob response if it's an error
       if (error.response?.data instanceof Blob) {
         error.response.data.text().then(text => {
           try {
             const errorData = JSON.parse(text);
-            alert("Failed to export data: " + (errorData.detail || errorData.message || "Unknown error"));
+            handleApiError({ response: { data: { detail: errorData.detail || errorData.message } } }, "Failed to export data");
           } catch {
-            alert("Failed to export data. Please check your connection and try again.");
+            handleApiError(error, "Failed to export data. Please check your connection and try again.");
           }
         });
       } else {
-        alert("Failed to export data: " + (error.response?.data?.detail || error.message || "Unknown error"));
+        handleApiError(error, "Failed to export data");
       }
     }
   };

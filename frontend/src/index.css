@@ -1,50 +1,117 @@
 @import "tailwindcss";
 
 :root {
-  --color-neo-bg: #fdfd96;
-  --color-neo-main: #ff6b6b;
-  --color-neo-accent: #4ecdc4;
-  --color-neo-dark: #1a1a1a;
-  --color-neo-white: #ffffff;
-  --shadow-neo: 4px 4px 0px 0px rgba(0,0,0,1);
-  --shadow-neo-sm: 2px 2px 0px 0px rgba(0,0,0,1);
+  /* Hybrid Professional Neo-Brutalist Palette */
+  --color-primary: #4f46e5; /* Indigo 600 */
+  --color-primary-light: #818cf8; /* Indigo 400 */
+  --color-secondary: #0f172a; /* Slate 900 */
+  
+  --color-bg-main: #f0f4f8; /* Cool Gray/Blue tint */
+  --color-bg-sub: #ffffff;
+  
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+  
+  --color-border: #0f172a;
+  
+  /* Refined Shadows - slightly softer but still distinct */
+  --shadow-hard: 3px 3px 0px 0px #0f172a;
+  --shadow-hard-sm: 1px 1px 0px 0px #0f172a;
+  --shadow-hard-hover: 5px 5px 0px 0px #0f172a;
+  
+  --radius-base: 0.75rem; /* More rounded for modern feel */
 }
 
 body {
-  background-color: var(--color-neo-bg);
-  color: var(--color-neo-dark);
+  background-color: var(--color-bg-main);
+  color: var(--color-text-main);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  
+  /* Subtle Dot Pattern Background */
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
+/* Component Classes */
+.card {
+  background-color: white;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-hard);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard-hover);
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: white;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-base);
+  padding: 0.6rem 1.25rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-hard-sm);
+  transition: all 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  font-size: 0.875rem;
+}
+
+.btn-primary:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-hard);
+  background-color: var(--color-primary-light);
+}
+
+.btn-primary:active {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 0 #0f172a;
+}
+
+.input-field {
+  width: 100%;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-base);
+  padding: 0.6rem 1rem;
+  background-color: white;
+  font-weight: 500;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-hard-sm);
+}
+
+.input-field:focus {
+  outline: none;
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard);
+  border-color: var(--color-primary);
+}
+
+/* Neo-Brutalist Utilities */
 .neo-box {
-  border: 2px solid var(--color-neo-dark);
-  box-shadow: var(--shadow-neo);
-  background-color: var(--color-neo-white);
-}
-
-.neo-btn {
-  border: 2px solid var(--color-neo-dark);
-  box-shadow: var(--shadow-neo);
-  background-color: var(--color-neo-main);
-  color: var(--color-neo-white);
-  font-weight: bold;
-  transition: all 0.1s;
-}
-
-.neo-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: var(--shadow-neo-sm);
+  background-color: white;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-hard);
 }
 
 .neo-input {
-  border: 2px solid var(--color-neo-dark);
-  box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
-  padding: 0.5rem;
-  outline: none;
-  background-color: var(--color-neo-white);
+  width: 100%;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-base);
+  padding: 0.6rem 1rem;
+  background-color: white;
   font-weight: 500;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-hard-sm);
 }
 
 .neo-input:focus {
-  box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+  outline: none;
   transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard);
+  border-color: var(--color-primary);
 }

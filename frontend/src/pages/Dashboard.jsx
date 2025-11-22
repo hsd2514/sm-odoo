@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BarChart3, Package, ArrowDownLeft, ArrowUpRight, AlertTriangle, Filter, ArrowRightLeft, ClipboardCheck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import api from '../services/api';
+import { useWarehouses, useCategories, useProducts } from '../hooks/useApiData';
 import Input from '../components/ui/Input';
 
 const Dashboard = () => {
@@ -13,9 +14,9 @@ const Dashboard = () => {
     internal_transfers: 0,
     adjustments: 0
   });
-  const [warehouses, setWarehouses] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
+  const { data: warehouses } = useWarehouses();
+  const { data: categoriesData } = useCategories();
+  const { data: products } = useProducts();
   const [moves, setMoves] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -25,11 +26,11 @@ const Dashboard = () => {
   const [warehouseFilter, setWarehouseFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
 
+  // Map categories to names for compatibility
+  const categories = categoriesData?.map(c => c.name) || [];
+
   useEffect(() => {
     fetchStats();
-    fetchWarehouses();
-    fetchCategories();
-    fetchProducts();
     fetchRecentMoves();
   }, [moveTypeFilter, statusFilter, warehouseFilter, categoryFilter]);
 
@@ -50,47 +51,13 @@ const Dashboard = () => {
     }
   };
 
-  const fetchWarehouses = async () => {
-    try {
-      const response = await api.get('/warehouses/');
-      setWarehouses(response.data);
-    } catch (error) {
-      console.error("Failed to fetch warehouses", error);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const response = await api.get('/categories/');
-      setCategories(response.data.map(c => c.name));
-    } catch (error) {
-      console.error("Failed to fetch categories", error);
-      // Fallback: get from products if categories API fails
-      try {
-        const productsResponse = await api.get('/products/');
-        const uniqueCategories = [...new Set(productsResponse.data.map(p => p.category_name || p.category).filter(Boolean))];
-        setCategories(uniqueCategories);
-      } catch (e) {
-        console.error("Failed to fetch categories from products", e);
-      }
-    }
-  };
-
-  const fetchProducts = async () => {
-    try {
-      const response = await api.get('/products/');
-      setProducts(response.data);
-    } catch (error) {
-      console.error("Failed to fetch products", error);
-    }
-  };
 
   const fetchRecentMoves = async () => {
     try {
       const response = await api.get('/operations/moves?limit=50');
       setMoves(response.data);
     } catch (error) {
-      console.error("Failed to fetch moves", error);
+      // Silently fail for moves - not critical for dashboard
     }
   };
 
@@ -148,21 +115,29 @@ const Dashboard = () => {
 
   return (
     <div>
-      <h2 className="text-3xl font-black uppercase mb-8">Dashboard</h2>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-3xl font-black uppercase tracking-tight text-slate-900">Dashboard</h2>
+          <p className="text-slate-600 font-medium mt-1">Overview of your inventory performance</p>
+        </div>
+        <div className="text-sm font-bold bg-white px-3 py-1 rounded-full border-2 border-slate-900 shadow-[2px_2px_0px_0px_#0f172a]">
+          {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </div>
+      </div>
       
       {/* Filters */}
-      <div className="neo-box p-4 mb-6 bg-white">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="card p-5 mb-8">
+        <div className="flex items-center gap-2 mb-4 text-indigo-600">
           <Filter size={20} />
           <h3 className="text-lg font-black uppercase">Filters</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block font-bold mb-1 text-sm">Document Type</label>
+            <label className="block font-bold mb-1 text-sm text-slate-700">Document Type</label>
             <select
               value={moveTypeFilter}
               onChange={(e) => setMoveTypeFilter(e.target.value)}
-              className="neo-input w-full font-bold"
+              className="input-field"
             >
               <option value="">All Types</option>
               <option value="IN">Receipts</option>
@@ -172,11 +147,11 @@ const Dashboard = () => {
             </select>
           </div>
           <div>
-            <label className="block font-bold mb-1 text-sm">Status</label>
+            <label className="block font-bold mb-1 text-sm text-slate-700">Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="neo-input w-full font-bold"
+              className="input-field"
             >
               <option value="">All Status</option>
               <option value="draft">Draft</option>
@@ -187,11 +162,11 @@ const Dashboard = () => {
             </select>
           </div>
           <div>
-            <label className="block font-bold mb-1 text-sm">Warehouse</label>
+            <label className="block font-bold mb-1 text-sm text-slate-700">Warehouse</label>
             <select
               value={warehouseFilter}
               onChange={(e) => setWarehouseFilter(e.target.value)}
-              className="neo-input w-full font-bold"
+              className="input-field"
             >
               <option value="">All Warehouses</option>
               {warehouses.map(w => (
@@ -200,11 +175,11 @@ const Dashboard = () => {
             </select>
           </div>
           <div>
-            <label className="block font-bold mb-1 text-sm">Category</label>
+            <label className="block font-bold mb-1 text-sm text-slate-700">Category</label>
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="neo-input w-full font-bold"
+              className="input-field"
             >
               <option value="">All Categories</option>
               {categories.map(cat => (
@@ -220,12 +195,14 @@ const Dashboard = () => {
         {cards.map((card, index) => {
           const Icon = card.icon;
           return (
-            <div key={index} className={`neo-box p-6 ${card.color} flex items-center justify-between`}>
+            <div key={index} className="card p-6 flex items-center justify-between hover:-translate-y-1 transition-transform">
               <div>
-                <p className="font-bold text-sm uppercase mb-1">{card.title}</p>
-                <h3 className="text-4xl font-black">{card.value}</h3>
+                <p className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-1">{card.title}</p>
+                <h3 className="text-4xl font-black text-slate-900">{card.value}</h3>
               </div>
-              <Icon size={48} strokeWidth={1.5} />
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 border-slate-900 shadow-[2px_2px_0px_0px_#0f172a] ${card.color}`}>
+                <Icon size={24} className="text-slate-900" strokeWidth={2} />
+              </div>
             </div>
           );
         })}
@@ -233,64 +210,76 @@ const Dashboard = () => {
 
       {/* Charts and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="neo-box p-6 bg-white">
-          <h3 className="text-xl font-black mb-4 uppercase flex items-center gap-2">
-            <BarChart3 /> Stock by Category
+        <div className="card p-6">
+          <h3 className="text-xl font-black mb-6 uppercase flex items-center gap-2">
+            <BarChart3 className="text-indigo-600" /> Stock by Category
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={getStockByCategoryData()}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" tick={{fontSize: 12}} />
+              <YAxis tick={{fontSize: 12}} />
+              <Tooltip 
+                contentStyle={{ borderRadius: '8px', border: '2px solid #0f172a', boxShadow: '4px 4px 0px 0px #0f172a' }}
+              />
               <Legend />
-              <Bar dataKey="stock" fill="#4ecdc4" stroke="#1a1a1a" strokeWidth={2} />
+              <Bar dataKey="stock" fill="#4f46e5" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="neo-box p-6 bg-white">
-          <h3 className="text-xl font-black mb-4 uppercase">Moves by Type</h3>
+        <div className="card p-6">
+          <h3 className="text-xl font-black mb-6 uppercase">Moves by Type</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={getMovesByTypeData()}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill="#ff6b6b" stroke="#1a1a1a" strokeWidth={2} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" tick={{fontSize: 12}} />
+              <YAxis tick={{fontSize: 12}} />
+              <Tooltip 
+                contentStyle={{ borderRadius: '8px', border: '2px solid #0f172a', boxShadow: '4px 4px 0px 0px #0f172a' }}
+              />
+              <Bar dataKey="value" fill="#ef4444" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="neo-box p-6 bg-white">
-          <h3 className="text-xl font-black mb-4 uppercase">Top 5 Products by Stock</h3>
+        <div className="card p-6">
+          <h3 className="text-xl font-black mb-6 uppercase">Top 5 Products by Stock</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={getTopProductsData()} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" width={100} />
-              <Tooltip />
-              <Bar dataKey="stock" fill="#fdfd96" stroke="#1a1a1a" strokeWidth={2} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis type="number" tick={{fontSize: 12}} />
+              <YAxis dataKey="name" type="category" width={100} tick={{fontSize: 12}} />
+              <Tooltip 
+                contentStyle={{ borderRadius: '8px', border: '2px solid #0f172a', boxShadow: '4px 4px 0px 0px #0f172a' }}
+              />
+              <Bar dataKey="stock" fill="#f59e0b" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="neo-box p-6 bg-white">
-          <h3 className="text-xl font-black mb-4 uppercase">Recent Activity</h3>
-          <ul className="space-y-4">
+        <div className="card p-6">
+          <h3 className="text-xl font-black mb-6 uppercase">Recent Activity</h3>
+          <ul className="space-y-3">
             {moves.slice(0, 5).map((move) => (
-              <li key={move.id} className="flex items-center justify-between border-b-2 border-black pb-2">
-                <div>
-                  <span className="font-bold">{move.reference || `#${move.id}`}</span>
-                  <span className="text-sm text-gray-600 ml-2">{move.move_type}</span>
+              <li key={move.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${
+                    move.move_type === 'IN' ? 'bg-green-500' : 
+                    move.move_type === 'OUT' ? 'bg-red-500' : 'bg-blue-500'
+                  }`} />
+                  <div>
+                    <span className="font-bold block text-sm">{move.reference || `#${move.id}`}</span>
+                    <span className="text-xs text-slate-500 font-medium">{move.move_type}</span>
+                  </div>
                 </div>
-                <span className="text-sm font-bold bg-gray-200 px-2 py-1 border-2 border-black">
+                <span className="text-xs font-bold bg-slate-100 px-2 py-1 rounded text-slate-600">
                   {new Date(move.created_at).toLocaleDateString()}
                 </span>
               </li>
             ))}
             {moves.length === 0 && (
-              <li className="text-gray-500 italic">No recent activity</li>
+              <li className="text-slate-500 italic text-center py-4">No recent activity</li>
             )}
           </ul>
         </div>

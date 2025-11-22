@@ -20,21 +20,21 @@ const DataTable = ({
     <div className={`neo-box overflow-hidden ${className}`}>
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="bg-[var(--color-neo-accent)] border-b-2 border-black">
+          <tr className="bg-slate-100 border-b-2 border-slate-900">
             {columns.map((col, index) => (
               <th 
                 key={index} 
-                className={`p-4 font-black border-r-2 border-black ${index === columns.length - 1 ? '' : ''}`}
+                className={`p-4 font-black text-slate-900 uppercase tracking-wider text-sm border-r-2 border-slate-900 last:border-r-0`}
               >
                 {col.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y-2 divide-slate-100">
           {data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="p-8 text-center text-gray-500 italic">
+              <td colSpan={columns.length} className="p-8 text-center text-slate-500 font-medium italic">
                 {emptyMessage}
               </td>
             </tr>

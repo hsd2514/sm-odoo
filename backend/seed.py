@@ -14,7 +14,7 @@ def seed_data():
             print(f"Creating user {email}...")
             user = User(
                 email=email,
-                password_hash=get_password_hash("admin"),
+                password_hash=get_password_hash("admin123"),
                 full_name="Harsh Dange",
                 role="admin"
             )

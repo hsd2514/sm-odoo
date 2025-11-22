@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import React, { useState, useMemo } from 'react';
+import { useCustomers } from '../hooks/useApiData';
+import { useCrudOperations } from '../utils/crudHelpers';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import SearchBar from '../components/ui/SearchBar';
@@ -8,9 +9,8 @@ import Modal from '../components/ui/Modal';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 
 const Customers = () => {
-  const [customers, setCustomers] = useState([]);
-  const [filteredCustomers, setFilteredCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: customers, loading, refetch } = useCustomers();
+  const { create, update, remove } = useCrudOperations('/customers/', refetch);
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,51 +23,26 @@ const Customers = () => {
     notes: ''
   });
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
-
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredCustomers(customers);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = customers.filter(c => 
-        c.name.toLowerCase().includes(query) ||
-        (c.email && c.email.toLowerCase().includes(query)) ||
-        (c.phone && c.phone.includes(query))
-      );
-      setFilteredCustomers(filtered);
-    }
+  const filteredCustomers = useMemo(() => {
+    if (!searchQuery.trim()) return customers;
+    const query = searchQuery.toLowerCase();
+    return customers.filter(c => 
+      c.name.toLowerCase().includes(query) ||
+      (c.email && c.email.toLowerCase().includes(query)) ||
+      (c.phone && c.phone.includes(query))
+    );
   }, [searchQuery, customers]);
-
-  const fetchCustomers = async () => {
-    try {
-      const response = await api.get('/customers/');
-      setCustomers(response.data);
-      setFilteredCustomers(response.data);
-    } catch (error) {
-      console.error("Failed to fetch customers", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      if (editingCustomer) {
-        await api.put(`/customers/${editingCustomer.id}`, customerForm);
-      } else {
-        await api.post('/customers/', customerForm);
-      }
+    const result = editingCustomer 
+      ? await update(editingCustomer.id, customerForm)
+      : await create(customerForm);
+    
+    if (result.success) {
       setShowModal(false);
       setEditingCustomer(null);
       setCustomerForm({ name: '', email: '', phone: '', address: '', contact_person: '', notes: '' });
-      fetchCustomers();
-    } catch (error) {
-      console.error("Failed to save customer", error);
-      alert("Failed to save customer");
     }
   };
 
@@ -85,14 +60,7 @@ const Customers = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this customer?")) return;
-    try {
-      await api.delete(`/customers/${id}`);
-      fetchCustomers();
-    } catch (error) {
-      console.error("Failed to delete customer", error);
-      alert("Failed to delete customer");
-    }
+    await remove(id, "Are you sure you want to delete this customer?");
   };
 
   return (

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
+import { useProducts, useCategories } from '../hooks/useApiData';
+import { handleApiError, confirmAction } from '../utils/errorHandler';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import SearchBar from '../components/ui/SearchBar';
@@ -9,10 +11,8 @@ import Modal from '../components/ui/Modal';
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
 
 const Products = () => {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: products, loading, refetch: refetchProducts } = useProducts();
+  const { data: categories } = useCategories();
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,47 +20,16 @@ const Products = () => {
   const [stockLocations, setStockLocations] = useState(null);
   const [showStockModal, setShowStockModal] = useState(false);
 
-  useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    // Filter products based on search query
-    if (!searchQuery.trim()) {
-      setFilteredProducts(products);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = products.filter(p => 
-        p.name.toLowerCase().includes(query) ||
-        p.sku.toLowerCase().includes(query) ||
-        (p.category_name && p.category_name.toLowerCase().includes(query)) ||
-        (p.category && p.category.toLowerCase().includes(query))
-      );
-      setFilteredProducts(filtered);
-    }
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return products;
+    const query = searchQuery.toLowerCase();
+    return products.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      p.sku.toLowerCase().includes(query) ||
+      (p.category_name && p.category_name.toLowerCase().includes(query)) ||
+      (p.category && p.category.toLowerCase().includes(query))
+    );
   }, [searchQuery, products]);
-
-  const fetchProducts = async () => {
-    try {
-      const response = await api.get('/products/');
-      setProducts(response.data);
-      setFilteredProducts(response.data);
-    } catch (error) {
-      console.error("Failed to fetch products", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const response = await api.get('/categories/');
-      setCategories(response.data);
-    } catch (error) {
-      console.error("Failed to fetch categories", error);
-    }
-  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -78,10 +47,9 @@ const Products = () => {
       setShowModal(false);
       setEditingProduct(null);
       setNewProduct({ name: '', sku: '', category_id: '', uom: '', initial_stock: 0, min_stock_level: '' });
-      fetchProducts();
+      refetchProducts();
     } catch (error) {
-      console.error("Failed to create product", error);
-      alert(error.response?.data?.detail || "Failed to create product");
+      handleApiError(error, "Failed to create product");
     }
   };
 
@@ -116,23 +84,21 @@ const Products = () => {
       setShowModal(false);
       setEditingProduct(null);
       setNewProduct({ name: '', sku: '', category_id: '', uom: '', initial_stock: 0, min_stock_level: '' });
-      fetchProducts();
+      refetchProducts();
     } catch (error) {
-      console.error("Failed to update product", error);
-      alert(error.response?.data?.detail || "Failed to update product");
+      handleApiError(error, "Failed to update product");
     }
   };
 
   const handleDelete = async (productId) => {
-    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+    if (!confirmAction('Are you sure you want to delete this product? This action cannot be undone.')) {
       return;
     }
     try {
       await api.delete(`/products/${productId}`);
-      fetchProducts();
+      refetchProducts();
     } catch (error) {
-      console.error("Failed to delete product", error);
-      alert(error.response?.data?.detail || "Failed to delete product");
+      handleApiError(error, "Failed to delete product");
     }
   };
 
@@ -142,8 +108,7 @@ const Products = () => {
       setStockLocations(response.data);
       setShowStockModal(true);
     } catch (error) {
-      console.error("Failed to fetch stock locations", error);
-      alert(error.response?.data?.detail || "Failed to fetch stock locations");
+      handleApiError(error, "Failed to fetch stock locations");
     }
   };
 

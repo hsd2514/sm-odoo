@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useVendors } from '../hooks/useApiData';
+import { useCrudOperations } from '../utils/crudHelpers';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import SearchBar from '../components/ui/SearchBar';
@@ -8,9 +9,8 @@ import Modal from '../components/ui/Modal';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 
 const Vendors = () => {
-  const [vendors, setVendors] = useState([]);
-  const [filteredVendors, setFilteredVendors] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: vendors, loading, refetch } = useVendors();
+  const { create, update, remove } = useCrudOperations('/vendors/', refetch);
   const [showModal, setShowModal] = useState(false);
   const [editingVendor, setEditingVendor] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,51 +23,26 @@ const Vendors = () => {
     notes: ''
   });
 
-  useEffect(() => {
-    fetchVendors();
-  }, []);
-
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredVendors(vendors);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = vendors.filter(v => 
-        v.name.toLowerCase().includes(query) ||
-        (v.email && v.email.toLowerCase().includes(query)) ||
-        (v.phone && v.phone.includes(query))
-      );
-      setFilteredVendors(filtered);
-    }
+  const filteredVendors = useMemo(() => {
+    if (!searchQuery.trim()) return vendors;
+    const query = searchQuery.toLowerCase();
+    return vendors.filter(v => 
+      v.name.toLowerCase().includes(query) ||
+      (v.email && v.email.toLowerCase().includes(query)) ||
+      (v.phone && v.phone.includes(query))
+    );
   }, [searchQuery, vendors]);
-
-  const fetchVendors = async () => {
-    try {
-      const response = await api.get('/vendors/');
-      setVendors(response.data);
-      setFilteredVendors(response.data);
-    } catch (error) {
-      console.error("Failed to fetch vendors", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      if (editingVendor) {
-        await api.put(`/vendors/${editingVendor.id}`, vendorForm);
-      } else {
-        await api.post('/vendors/', vendorForm);
-      }
+    const result = editingVendor 
+      ? await update(editingVendor.id, vendorForm)
+      : await create(vendorForm);
+    
+    if (result.success) {
       setShowModal(false);
       setEditingVendor(null);
       setVendorForm({ name: '', email: '', phone: '', address: '', contact_person: '', notes: '' });
-      fetchVendors();
-    } catch (error) {
-      console.error("Failed to save vendor", error);
-      alert("Failed to save vendor");
     }
   };
 
@@ -85,14 +60,7 @@ const Vendors = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this vendor?")) return;
-    try {
-      await api.delete(`/vendors/${id}`);
-      fetchVendors();
-    } catch (error) {
-      console.error("Failed to delete vendor", error);
-      alert("Failed to delete vendor");
-    }
+    await remove(id, "Are you sure you want to delete this vendor?");
   };
 
   return (

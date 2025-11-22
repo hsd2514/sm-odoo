@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
+import { useProducts, useWarehouses, useVendors, useCustomers } from '../hooks/useApiData';
 import SearchBar from '../components/ui/SearchBar';
 import FilterBar from '../components/ui/FilterBar';
 import DataTable from '../components/ui/DataTable';
@@ -11,24 +12,20 @@ import { ArrowDownLeft, ArrowUpRight, ArrowRightLeft, ClipboardCheck, Printer } 
 
 const MoveHistory = () => {
   const [moves, setMoves] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [warehouses, setWarehouses] = useState([]);
-  const [vendors, setVendors] = useState([]);
-  const [customers, setCustomers] = useState([]);
+  const { data: products } = useProducts();
+  const { data: warehouses } = useWarehouses();
+  const { data: vendors } = useVendors();
+  const { data: customers } = useCustomers();
   const [loading, setLoading] = useState(true);
+  const [printMove, setPrintMove] = useState(null);
+  const printRef = useRef();
   const [searchQuery, setSearchQuery] = useState('');
   const [moveTypeFilter, setMoveTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('');
-  const [printMove, setPrintMove] = useState(null);
-  const printRef = useRef();
 
   useEffect(() => {
     fetchMoves();
-    fetchProducts();
-    fetchWarehouses();
-    fetchVendors();
-    fetchCustomers();
   }, [moveTypeFilter, statusFilter, warehouseFilter, searchQuery]);
 
   const fetchMoves = async () => {
@@ -48,41 +45,6 @@ const MoveHistory = () => {
     }
   };
 
-  const fetchProducts = async () => {
-    try {
-      const response = await api.get('/products/');
-      setProducts(response.data);
-    } catch (error) {
-      console.error("Failed to fetch products", error);
-    }
-  };
-
-  const fetchWarehouses = async () => {
-    try {
-      const response = await api.get('/warehouses/');
-      setWarehouses(response.data);
-    } catch (error) {
-      console.error("Failed to fetch warehouses", error);
-    }
-  };
-
-  const fetchVendors = async () => {
-    try {
-      const response = await api.get('/vendors/');
-      setVendors(response.data);
-    } catch (error) {
-      console.error("Failed to fetch vendors", error);
-    }
-  };
-
-  const fetchCustomers = async () => {
-    try {
-      const response = await api.get('/customers/');
-      setCustomers(response.data);
-    } catch (error) {
-      console.error("Failed to fetch customers", error);
-    }
-  };
 
   const getMoveTypeIcon = (type) => {
     const icons = {

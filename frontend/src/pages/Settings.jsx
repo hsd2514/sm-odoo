@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { useWarehouses, useCategories } from '../hooks/useApiData';
+import { useCrudOperations } from '../utils/crudHelpers';
+import { handleApiError, confirmAction } from '../utils/errorHandler';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import SearchBar from '../components/ui/SearchBar';
 import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
-import { User, Warehouse, Tag, Lock } from 'lucide-react';
+import { User, Warehouse, Tag, Lock, Plus, Trash2, Edit2 } from 'lucide-react';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -15,16 +18,18 @@ const Settings = () => {
   const [message, setMessage] = useState('');
 
   // Warehouse state
-  const [warehouses, setWarehouses] = useState([]);
-  const [warehouseLoading, setWarehouseLoading] = useState(false);
+  const shouldFetchWarehouses = activeTab === 'warehouses';
+  const { data: warehouses, loading: warehouseLoading, refetch: refetchWarehouses } = useWarehouses([shouldFetchWarehouses]);
+  const { create: createWarehouse, update: updateWarehouse, remove: removeWarehouse } = useCrudOperations('/warehouses/', refetchWarehouses);
   const [warehouseModalOpen, setWarehouseModalOpen] = useState(false);
   const [editingWarehouse, setEditingWarehouse] = useState(null);
   const [newWarehouse, setNewWarehouse] = useState({ name: '', location: '' });
   const [warehouseSearch, setWarehouseSearch] = useState('');
 
   // Category state
-  const [categories, setCategories] = useState([]);
-  const [categoryLoading, setCategoryLoading] = useState(false);
+  const shouldFetchCategories = activeTab === 'categories';
+  const { data: categories, loading: categoryLoading, refetch: refetchCategories } = useCategories([shouldFetchCategories]);
+  const { create: createCategory, update: updateCategory, remove: removeCategory } = useCrudOperations('/categories/', refetchCategories);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
@@ -33,10 +38,6 @@ const Settings = () => {
   useEffect(() => {
     if (activeTab === 'profile') {
       fetchProfile();
-    } else if (activeTab === 'warehouses') {
-      fetchWarehouses();
-    } else if (activeTab === 'categories') {
-      fetchCategories();
     }
   }, [activeTab]);
 
@@ -70,33 +71,16 @@ const Settings = () => {
   };
 
   // Warehouse functions
-  const fetchWarehouses = async () => {
-    try {
-      setWarehouseLoading(true);
-      const response = await api.get('/warehouses/');
-      setWarehouses(response.data);
-    } catch (error) {
-      console.error("Failed to fetch warehouses", error);
-    } finally {
-      setWarehouseLoading(false);
-    }
-  };
-
   const handleWarehouseSubmit = async (e) => {
     e.preventDefault();
-    try {
-      if (editingWarehouse) {
-        await api.put(`/warehouses/${editingWarehouse.id}`, newWarehouse);
-      } else {
-        await api.post('/warehouses/', newWarehouse);
-      }
-      await fetchWarehouses();
+    const result = editingWarehouse 
+      ? await updateWarehouse(editingWarehouse.id, newWarehouse)
+      : await createWarehouse(newWarehouse);
+    
+    if (result.success) {
       setWarehouseModalOpen(false);
       setNewWarehouse({ name: '', location: '' });
       setEditingWarehouse(null);
-    } catch (error) {
-      console.error("Failed to save warehouse", error);
-      alert(error.response?.data?.detail || 'Failed to save warehouse');
     }
   };
 
@@ -107,44 +91,20 @@ const Settings = () => {
   };
 
   const handleWarehouseDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this warehouse?')) return;
-    try {
-      await api.delete(`/warehouses/${id}`);
-      await fetchWarehouses();
-    } catch (error) {
-      console.error("Failed to delete warehouse", error);
-      alert(error.response?.data?.detail || 'Failed to delete warehouse');
-    }
+    await removeWarehouse(id, 'Are you sure you want to delete this warehouse?');
   };
 
   // Category functions
-  const fetchCategories = async () => {
-    try {
-      setCategoryLoading(true);
-      const response = await api.get('/categories/');
-      setCategories(response.data);
-    } catch (error) {
-      console.error("Failed to fetch categories", error);
-    } finally {
-      setCategoryLoading(false);
-    }
-  };
-
   const handleCategorySubmit = async (e) => {
     e.preventDefault();
-    try {
-      if (editingCategory) {
-        await api.put(`/categories/${editingCategory.id}`, newCategory);
-      } else {
-        await api.post('/categories/', newCategory);
-      }
-      await fetchCategories();
+    const result = editingCategory 
+      ? await updateCategory(editingCategory.id, newCategory)
+      : await createCategory(newCategory);
+    
+    if (result.success) {
       setCategoryModalOpen(false);
       setNewCategory({ name: '', description: '' });
       setEditingCategory(null);
-    } catch (error) {
-      console.error("Failed to save category", error);
-      alert(error.response?.data?.detail || 'Failed to save category');
     }
   };
 
@@ -155,14 +115,7 @@ const Settings = () => {
   };
 
   const handleCategoryDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this category?')) return;
-    try {
-      await api.delete(`/categories/${id}`);
-      await fetchCategories();
-    } catch (error) {
-      console.error("Failed to delete category", error);
-      alert(error.response?.data?.detail || 'Failed to delete category');
-    }
+    await removeCategory(id, 'Are you sure you want to delete this category?');
   };
 
   // Filter functions
@@ -186,20 +139,21 @@ const Settings = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <h2 className="text-3xl font-black uppercase mb-8">Settings</h2>
+      <h2 className="text-3xl font-black uppercase mb-8 text-slate-900">Settings</h2>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b-4 border-black">
+      <div className="flex gap-2 mb-8 overflow-x-auto pb-2 border-b border-slate-200">
         {tabs.map(tab => {
           const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-3 font-bold uppercase border-2 border-b-0 border-black flex items-center gap-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-black text-white'
-                  : 'bg-white hover:bg-gray-100'
+              className={`flex items-center gap-2 px-6 py-3 font-bold rounded-t-lg transition-all border-b-2 ${
+                isActive 
+                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50' 
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
               }`}
             >
               <Icon size={18} />
@@ -211,29 +165,29 @@ const Settings = () => {
 
       {/* Profile Tab */}
       {activeTab === 'profile' && (
-        <div className="neo-box p-8 bg-white">
-          <h3 className="text-xl font-black mb-6 uppercase flex items-center gap-2 border-b-2 border-black pb-2">
-            <User /> Profile Settings
+        <div className="card p-8 max-w-2xl">
+          <h3 className="text-xl font-black mb-6 uppercase flex items-center gap-2 border-b border-slate-100 pb-4 text-slate-800">
+            <User className="text-indigo-600" /> Profile Settings
           </h3>
 
           {message && (
-            <div className={`p-4 mb-6 font-bold border-2 border-black ${message.includes('success') ? 'bg-green-200' : 'bg-red-200'}`}>
+            <div className={`p-4 mb-6 font-bold rounded-lg border ${message.includes('success') ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
               {message}
             </div>
           )}
 
           <form onSubmit={handleUpdate} className="space-y-6">
             <div>
-              <label className="block font-bold mb-2">Email (Read-only)</label>
+              <label className="block font-bold mb-2 text-sm text-slate-700">Email (Read-only)</label>
               <Input 
                 value={profile.email} 
                 disabled 
-                className="bg-gray-100 cursor-not-allowed"
+                className="bg-slate-50 text-slate-500 cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="block font-bold mb-2">Full Name</label>
+              <label className="block font-bold mb-2 text-sm text-slate-700">Full Name</label>
               <Input 
                 value={profile.full_name} 
                 onChange={(e) => setProfile({...profile, full_name: e.target.value})} 
@@ -242,7 +196,7 @@ const Settings = () => {
             </div>
 
             <div>
-              <label className="block font-bold mb-2 flex items-center gap-2">
+              <label className="block font-bold mb-2 text-sm text-slate-700 flex items-center gap-2">
                 <Lock size={16} /> New Password (Optional)
               </label>
               <Input 
@@ -253,69 +207,78 @@ const Settings = () => {
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              Save Changes
-            </Button>
+            <div className="pt-4">
+              <Button type="submit" className="w-full">
+                Save Changes
+              </Button>
+            </div>
           </form>
         </div>
       )}
 
       {/* Warehouses Tab */}
       {activeTab === 'warehouses' && (
-        <div>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-black uppercase flex items-center gap-2">
-              <Warehouse /> Warehouse Management
-            </h3>
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="text-xl font-black uppercase text-slate-800">Warehouses</h3>
+              <p className="text-slate-500 text-sm font-medium">Manage your physical storage locations</p>
+            </div>
             <Button onClick={() => {
               setEditingWarehouse(null);
               setNewWarehouse({ name: '', location: '' });
               setWarehouseModalOpen(true);
             }}>
-              + Add Warehouse
+              <Plus size={18} /> Add Warehouse
             </Button>
           </div>
 
-          <div className="mb-4">
-            <SearchBar
-              placeholder="Search warehouses by name or location..."
-              value={warehouseSearch}
-              onChange={(e) => setWarehouseSearch(e.target.value)}
+          <div className="card p-1">
+            <div className="p-4 border-b border-slate-100">
+              <SearchBar
+                placeholder="Search warehouses..."
+                value={warehouseSearch}
+                onChange={(e) => setWarehouseSearch(e.target.value)}
+              />
+            </div>
+
+            <DataTable
+              columns={[
+                { header: 'Name' },
+                { header: 'Location' },
+                { header: 'Actions' }
+              ]}
+              data={filteredWarehouses}
+              loading={warehouseLoading}
+              emptyMessage="No warehouses found."
+              renderRow={(warehouse) => (
+                <tr key={warehouse.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <td className="p-4 font-bold text-slate-900">{warehouse.name}</td>
+                  <td className="p-4 text-slate-600">{warehouse.location}</td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleWarehouseEdit(warehouse)}
+                        className="h-8 w-8 p-0 rounded-full flex items-center justify-center"
+                        title="Edit"
+                      >
+                        <Edit2 size={14} />
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => handleWarehouseDelete(warehouse.id)}
+                        className="h-8 w-8 p-0 rounded-full flex items-center justify-center bg-red-50 text-red-600 border-red-100 hover:bg-red-100 hover:border-red-200 shadow-none"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              )}
             />
           </div>
-
-          <DataTable
-            columns={[
-              { header: 'Name' },
-              { header: 'Location' },
-              { header: 'Actions' }
-            ]}
-            data={filteredWarehouses}
-            loading={warehouseLoading}
-            emptyMessage="No warehouses found."
-            renderRow={(warehouse) => (
-              <tr key={warehouse.id} className="border-b-2 border-black hover:bg-gray-50">
-                <td className="p-4 border-r-2 border-black font-bold">{warehouse.name}</td>
-                <td className="p-4 border-r-2 border-black">{warehouse.location}</td>
-                <td className="p-4">
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleWarehouseEdit(warehouse)}
-                      className="bg-blue-500 hover:bg-blue-600 text-white"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={() => handleWarehouseDelete(warehouse.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white"
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            )}
-          />
 
           <Modal
             isOpen={warehouseModalOpen}
@@ -328,33 +291,36 @@ const Settings = () => {
           >
             <form onSubmit={handleWarehouseSubmit} className="space-y-4">
               <div>
-                <label className="block font-bold mb-2">Name *</label>
+                <label className="block font-bold mb-2 text-sm text-slate-700">Name *</label>
                 <Input
                   value={newWarehouse.name}
                   onChange={(e) => setNewWarehouse({...newWarehouse, name: e.target.value})}
                   required
+                  placeholder="e.g. Main Distribution Center"
                 />
               </div>
               <div>
-                <label className="block font-bold mb-2">Location *</label>
+                <label className="block font-bold mb-2 text-sm text-slate-700">Location *</label>
                 <Input
                   value={newWarehouse.location}
                   onChange={(e) => setNewWarehouse({...newWarehouse, location: e.target.value})}
                   required
+                  placeholder="e.g. New York, NY"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-3 pt-4">
                 <Button type="submit" className="flex-1">
-                  {editingWarehouse ? 'Update' : 'Create'}
+                  {editingWarehouse ? 'Update Warehouse' : 'Create Warehouse'}
                 </Button>
                 <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => {
                     setWarehouseModalOpen(false);
                     setEditingWarehouse(null);
                     setNewWarehouse({ name: '', location: '' });
                   }}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600"
+                  className="flex-1"
                 >
                   Cancel
                 </Button>
@@ -366,60 +332,67 @@ const Settings = () => {
 
       {/* Categories Tab */}
       {activeTab === 'categories' && (
-        <div>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-black uppercase flex items-center gap-2">
-              <Tag /> Category Management
-            </h3>
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="text-xl font-black uppercase text-slate-800">Categories</h3>
+              <p className="text-slate-500 text-sm font-medium">Organize your products</p>
+            </div>
             <Button onClick={() => {
               setEditingCategory(null);
               setNewCategory({ name: '', description: '' });
               setCategoryModalOpen(true);
             }}>
-              + Add Category
+              <Plus size={18} /> Add Category
             </Button>
           </div>
 
-          <div className="mb-4">
-            <SearchBar
-              placeholder="Search categories by name or description..."
-              value={categorySearch}
-              onChange={(e) => setCategorySearch(e.target.value)}
+          <div className="card p-1">
+            <div className="p-4 border-b border-slate-100">
+              <SearchBar
+                placeholder="Search categories..."
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+              />
+            </div>
+
+            <DataTable
+              columns={[
+                { header: 'Name' },
+                { header: 'Description' },
+                { header: 'Actions' }
+              ]}
+              data={filteredCategories}
+              loading={categoryLoading}
+              emptyMessage="No categories found."
+              renderRow={(category) => (
+                <tr key={category.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <td className="p-4 font-bold text-slate-900">{category.name}</td>
+                  <td className="p-4 text-slate-600">{category.description || '-'}</td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleCategoryEdit(category)}
+                        className="h-8 w-8 p-0 rounded-full flex items-center justify-center"
+                        title="Edit"
+                      >
+                        <Edit2 size={14} />
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => handleCategoryDelete(category.id)}
+                        className="h-8 w-8 p-0 rounded-full flex items-center justify-center bg-red-50 text-red-600 border-red-100 hover:bg-red-100 hover:border-red-200 shadow-none"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              )}
             />
           </div>
-
-          <DataTable
-            columns={[
-              { header: 'Name' },
-              { header: 'Description' },
-              { header: 'Actions' }
-            ]}
-            data={filteredCategories}
-            loading={categoryLoading}
-            emptyMessage="No categories found."
-            renderRow={(category) => (
-              <tr key={category.id} className="border-b-2 border-black hover:bg-gray-50">
-                <td className="p-4 border-r-2 border-black font-bold">{category.name}</td>
-                <td className="p-4 border-r-2 border-black">{category.description || '-'}</td>
-                <td className="p-4">
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleCategoryEdit(category)}
-                      className="bg-blue-500 hover:bg-blue-600 text-white"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={() => handleCategoryDelete(category.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white"
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            )}
-          />
 
           <Modal
             isOpen={categoryModalOpen}
@@ -432,33 +405,35 @@ const Settings = () => {
           >
             <form onSubmit={handleCategorySubmit} className="space-y-4">
               <div>
-                <label className="block font-bold mb-2">Name *</label>
+                <label className="block font-bold mb-2 text-sm text-slate-700">Name *</label>
                 <Input
                   value={newCategory.name}
                   onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
                   required
+                  placeholder="e.g. Electronics"
                 />
               </div>
               <div>
-                <label className="block font-bold mb-2">Description</label>
+                <label className="block font-bold mb-2 text-sm text-slate-700">Description</label>
                 <Input
                   value={newCategory.description}
                   onChange={(e) => setNewCategory({...newCategory, description: e.target.value})}
                   placeholder="Optional description"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-3 pt-4">
                 <Button type="submit" className="flex-1">
-                  {editingCategory ? 'Update' : 'Create'}
+                  {editingCategory ? 'Update Category' : 'Create Category'}
                 </Button>
                 <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => {
                     setCategoryModalOpen(false);
                     setEditingCategory(null);
                     setNewCategory({ name: '', description: '' });
                   }}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600"
+                  className="flex-1"
                 >
                   Cancel
                 </Button>

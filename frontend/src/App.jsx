@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
+import Landing from './pages/Landing';
 import Layout from './components/Layout';
 import Products from './pages/Products';
 import Operations from './pages/Operations';
@@ -29,16 +30,19 @@ const App = () => {
     <AuthProvider>
       <Router>
         <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           
+          {/* Protected Routes */}
           <Route path="/" element={
             <ProtectedRoute>
               <Layout />
             </ProtectedRoute>
           }>
-            <Route index element={<Dashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="products" element={<Products />} />
             <Route path="operations" element={<Operations />} />
             <Route path="move-history" element={<MoveHistory />} />
