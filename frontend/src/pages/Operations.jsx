@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import SearchBar from '../components/ui/SearchBar';
+import Select from '../components/ui/Select';
+import StatusBadge from '../components/ui/StatusBadge';
 import { ArrowRightLeft, ArrowDownLeft, ArrowUpRight, ClipboardCheck } from 'lucide-react';
 
 const Operations = () => {
@@ -108,16 +111,6 @@ const Operations = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      'draft': 'bg-gray-200',
-      'waiting': 'bg-yellow-200',
-      'ready': 'bg-blue-200',
-      'done': 'bg-green-200',
-      'cancelled': 'bg-red-200'
-    };
-    return colors[status] || 'bg-gray-200';
-  };
 
   const getNextStatus = (currentStatus) => {
     const transitions = {
@@ -165,19 +158,19 @@ const Operations = () => {
       </div>
 
       {/* Search and Filter Bar */}
-      <div className="neo-box p-4 mb-6 flex flex-col md:flex-row gap-4 items-center bg-white">
+      <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
         <div className="flex-1 w-full md:w-auto">
-          <Input 
-            placeholder="Search by reference, source, or destination..." 
+          <SearchBar
+            placeholder="Search by reference, source, or destination..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <div className="flex gap-2">
-          <select
+          <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="neo-input px-4 py-2 font-bold"
+            className="px-4 py-2"
           >
             <option value="">All Status</option>
             <option value="draft">Draft</option>
@@ -185,7 +178,7 @@ const Operations = () => {
             <option value="ready">Ready</option>
             <option value="done">Done</option>
             <option value="cancelled">Cancelled</option>
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -197,17 +190,17 @@ const Operations = () => {
                 <form onSubmit={handleCreate} className="space-y-4">
                     <div>
                         <label className="block font-bold mb-1">Product</label>
-                        <select 
-                            className="neo-input w-full bg-white"
+                        <Select
                             value={newMove.product_id}
                             onChange={(e) => setNewMove({...newMove, product_id: e.target.value})}
+                            className="w-full"
                             required
                         >
                             <option value="">Select Product</option>
                             {products.map(p => (
                                 <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
                             ))}
-                        </select>
+                        </Select>
                     </div>
                     <div>
                         <label className="block font-bold mb-1">Quantity</label>
@@ -221,81 +214,81 @@ const Operations = () => {
                     {activeTab === 'IN' && (
                         <div>
                             <label className="block font-bold mb-1">Destination Warehouse</label>
-                            <select 
-                                className="neo-input w-full bg-white"
+                            <Select
                                 value={newMove.dest_warehouse_id}
                                 onChange={(e) => setNewMove({...newMove, dest_warehouse_id: e.target.value})}
+                                className="w-full"
                                 required
                             >
                                 <option value="">Select Destination</option>
                                 {warehouses.map(w => (
                                     <option key={w.id} value={w.id}>{w.name} ({w.location})</option>
                                 ))}
-                            </select>
+                            </Select>
                         </div>
                     )}
                     {activeTab === 'OUT' && (
                         <div>
                             <label className="block font-bold mb-1">Source Warehouse</label>
-                            <select 
-                                className="neo-input w-full bg-white"
+                            <Select
                                 value={newMove.source_warehouse_id}
                                 onChange={(e) => setNewMove({...newMove, source_warehouse_id: e.target.value})}
+                                className="w-full"
                                 required
                             >
                                 <option value="">Select Source</option>
                                 {warehouses.map(w => (
                                     <option key={w.id} value={w.id}>{w.name} ({w.location})</option>
                                 ))}
-                            </select>
+                            </Select>
                         </div>
                     )}
                     {activeTab === 'INT' && (
                         <>
                             <div>
                                 <label className="block font-bold mb-1">Source Warehouse</label>
-                                <select 
-                                    className="neo-input w-full bg-white"
+                                <Select
                                     value={newMove.source_warehouse_id}
                                     onChange={(e) => setNewMove({...newMove, source_warehouse_id: e.target.value})}
+                                    className="w-full"
                                     required
                                 >
                                     <option value="">Select Source</option>
                                     {warehouses.map(w => (
                                         <option key={w.id} value={w.id}>{w.name} ({w.location})</option>
                                     ))}
-                                </select>
+                                </Select>
                             </div>
                             <div>
                                 <label className="block font-bold mb-1">Destination Warehouse</label>
-                                <select 
-                                    className="neo-input w-full bg-white"
+                                <Select
                                     value={newMove.dest_warehouse_id}
                                     onChange={(e) => setNewMove({...newMove, dest_warehouse_id: e.target.value})}
+                                    className="w-full"
                                     required
                                 >
                                     <option value="">Select Destination</option>
                                     {warehouses.map(w => (
                                         <option key={w.id} value={w.id}>{w.name} ({w.location})</option>
                                     ))}
-                                </select>
+                                </Select>
                             </div>
                         </>
                     )}
                     {activeTab === 'ADJ' && (
                         <div>
                             <label className="block font-bold mb-1">Warehouse</label>
-                            <select 
-                                className="neo-input w-full bg-white"
-                                value={newMove.source_warehouse_id || newMove.dest_warehouse_id} // For ADJ, it's either source or dest depending on positive/negative quantity
+                            <Select
+                                value={newMove.source_warehouse_id || newMove.dest_warehouse_id}
                                 onChange={(e) => setNewMove({...newMove, source_warehouse_id: e.target.value, dest_warehouse_id: e.target.value})}
+                                className="w-full"
                                 required
                             >
                                 <option value="">Select Warehouse</option>
                                 {warehouses.map(w => (
                                     <option key={w.id} value={w.id}>{w.name} ({w.location})</option>
                                 ))}
-                            </select>
+                            </Select>
                         </div>
                     )}
                     <Button type="submit" className="w-full mt-4">Create Draft</Button>
@@ -341,9 +334,7 @@ const Operations = () => {
                                             {move.dest_location || (move.dest_warehouse_id ? `WH#${move.dest_warehouse_id}` : '-')}
                                         </td>
                                         <td className="p-4 border-r-2 border-black">
-                                            <span className={`px-2 py-1 font-bold text-xs border-2 border-black ${getStatusColor(move.status)}`}>
-                                                {move.status.toUpperCase()}
-                                            </span>
+                                        <StatusBadge status={move.status} />
                                         </td>
                                         <td className="p-4">
                                             <div className="flex flex-wrap gap-2">

@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { Plus, Search, Edit, Trash2 } from 'lucide-react';
+import SearchBar from '../components/ui/SearchBar';
+import DataTable from '../components/ui/DataTable';
+import Modal from '../components/ui/Modal';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 
 const Vendors = () => {
   const [vendors, setVendors] = useState([]);
@@ -105,89 +108,69 @@ const Vendors = () => {
         </Button>
       </div>
 
-      <div className="neo-box p-4 mb-8 flex items-center gap-4 bg-white">
-        <Search size={24} className="flex-shrink-0" />
-        <Input 
-          placeholder="Search vendors by name, email, or phone..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1" 
-        />
-      </div>
+      <SearchBar
+        placeholder="Search vendors by name, email, or phone..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="mb-8"
+      />
 
-      {loading ? (
-        <div>Loading...</div>
-      ) : (
-        <div className="neo-box overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[var(--color-neo-accent)] border-b-2 border-black">
-                <th className="p-4 font-black border-r-2 border-black">Name</th>
-                <th className="p-4 font-black border-r-2 border-black">Contact</th>
-                <th className="p-4 font-black border-r-2 border-black">Phone</th>
-                <th className="p-4 font-black border-r-2 border-black">Address</th>
-                <th className="p-4 font-black">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredVendors.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="p-8 text-center text-gray-500 italic">
-                    {searchQuery ? 'No vendors found matching your search.' : 'No vendors found.'}
-                  </td>
-                </tr>
-              ) : (
-                filteredVendors.map((vendor) => (
-                  <tr key={vendor.id} className="border-b-2 border-black hover:bg-gray-50">
-                    <td className="p-4 border-r-2 border-black font-bold">{vendor.name}</td>
-                    <td className="p-4 border-r-2 border-black">
-                      <div className="text-sm">
-                        {vendor.email && <div>{vendor.email}</div>}
-                        {vendor.contact_person && <div className="text-gray-600">{vendor.contact_person}</div>}
-                      </div>
-                    </td>
-                    <td className="p-4 border-r-2 border-black">{vendor.phone || '-'}</td>
-                    <td className="p-4 border-r-2 border-black text-sm">{vendor.address || '-'}</td>
-                    <td className="p-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(vendor)}
-                          className="p-2 hover:bg-blue-100 border-2 border-black font-bold"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(vendor.id)}
-                          className="p-2 hover:bg-red-100 border-2 border-black font-bold"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        columns={[
+          { header: 'Name' },
+          { header: 'Contact' },
+          { header: 'Phone' },
+          { header: 'Address' },
+          { header: 'Actions' }
+        ]}
+        data={filteredVendors}
+        loading={loading}
+        emptyMessage={searchQuery ? 'No vendors found matching your search.' : 'No vendors found.'}
+        renderRow={(vendor) => (
+          <tr key={vendor.id} className="border-b-2 border-black hover:bg-gray-50">
+            <td className="p-4 border-r-2 border-black font-bold">{vendor.name}</td>
+            <td className="p-4 border-r-2 border-black">
+              <div className="text-sm">
+                {vendor.email && <div>{vendor.email}</div>}
+                {vendor.contact_person && <div className="text-gray-600">{vendor.contact_person}</div>}
+              </div>
+            </td>
+            <td className="p-4 border-r-2 border-black">{vendor.phone || '-'}</td>
+            <td className="p-4 border-r-2 border-black text-sm">{vendor.address || '-'}</td>
+            <td className="p-4">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleEdit(vendor)}
+                  className="p-2 hover:bg-blue-100 border-2 border-black font-bold"
+                >
+                  <Edit size={16} />
+                </button>
+                <button
+                  onClick={() => handleDelete(vendor.id)}
+                  className="p-2 hover:bg-red-100 border-2 border-black font-bold"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </td>
+          </tr>
+        )}
+      />
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="neo-box p-8 w-full max-w-lg relative bg-white">
-            <button 
-              onClick={() => {
-                setShowModal(false);
-                setEditingVendor(null);
-              }}
-              className="absolute top-4 right-4 font-bold text-xl hover:text-red-500"
-            >
-              X
-            </button>
-            <h3 className="text-2xl font-black mb-6 uppercase">
-              {editingVendor ? 'Edit Vendor' : 'New Vendor'}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
+      <Modal
+        isOpen={showModal}
+        onClose={() => {
+          setShowModal(false);
+          setEditingVendor(null);
+        }}
+        title={editingVendor ? 'Edit Vendor' : 'New Vendor'}
+        footer={
+          <Button type="submit" form="vendor-form" className="w-full">
+            {editingVendor ? 'Update Vendor' : 'Create Vendor'}
+          </Button>
+        }
+      >
+        <form id="vendor-form" onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block font-bold mb-1">Name *</label>
                 <Input 
@@ -236,15 +219,8 @@ const Vendors = () => {
                   rows="3"
                 />
               </div>
-              <div className="pt-4">
-                <Button type="submit" className="w-full">
-                  {editingVendor ? 'Update Vendor' : 'Create Vendor'}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </div>
   );
 };
