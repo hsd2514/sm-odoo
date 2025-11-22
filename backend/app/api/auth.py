@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select, SQLModel
+from typing import Optional
 from app.core.database import get_session
 from app.models.user import User
 from app.schemas.auth import UserCreate, UserRead, Token
@@ -64,29 +65,64 @@ def update_user_me(user_update: UserUpdate, session: Session = Depends(get_sessi
     return current_user
 
 @router.get("/stats")
-def get_stats(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+def get_stats(
+    move_type: Optional[str] = None,
+    status: Optional[str] = None,
+    warehouse_id: Optional[int] = None,
+    category: Optional[str] = None,
+    session: Session = Depends(get_session), 
+    current_user: User = Depends(get_current_user)
+):
+    """Get dashboard stats with optional filters"""
     logger.info(f"🔵 STATS REQUEST - User: {current_user.email}")
     from app.models.product import Product
-    from app.models.inventory import StockMove
+    from app.models.inventory import StockMove, Warehouse
     
-    total_products = session.exec(select(Product)).all()
-    low_stock = len([p for p in total_products if p.current_stock < 10]) # Simple logic
+    # Get products with optional category filter
+    product_query = select(Product)
+    if category:
+        product_query = product_query.where(Product.category == category)
+    total_products = session.exec(product_query).all()
+    low_stock = len([p for p in total_products if p.current_stock < 10])
     
-    # Count moves - Fixed: use & operator for multiple conditions
-    incoming = session.exec(
-        select(StockMove).where(
-            (StockMove.move_type == 'IN') & (StockMove.status == 'draft')
+    # Count moves with filters
+    incoming_query = select(StockMove).where(StockMove.move_type == 'IN')
+    outgoing_query = select(StockMove).where(StockMove.move_type == 'OUT')
+    
+    if status:
+        incoming_query = incoming_query.where(StockMove.status == status)
+        outgoing_query = outgoing_query.where(StockMove.status == status)
+    else:
+        # Default: count draft moves
+        incoming_query = incoming_query.where(StockMove.status == 'draft')
+        outgoing_query = outgoing_query.where(StockMove.status == 'draft')
+    
+    if warehouse_id:
+        incoming_query = incoming_query.where(
+            (StockMove.dest_warehouse_id == warehouse_id) | 
+            (StockMove.source_warehouse_id == warehouse_id)
         )
+        outgoing_query = outgoing_query.where(
+            (StockMove.source_warehouse_id == warehouse_id) |
+            (StockMove.dest_warehouse_id == warehouse_id)
+        )
+    
+    incoming = session.exec(incoming_query).all()
+    outgoing = session.exec(outgoing_query).all()
+    
+    # Get additional stats
+    internal_transfers = session.exec(
+        select(StockMove).where(StockMove.move_type == 'INT')
     ).all()
-    outgoing = session.exec(
-        select(StockMove).where(
-            (StockMove.move_type == 'OUT') & (StockMove.status == 'draft')
-        )
+    adjustments = session.exec(
+        select(StockMove).where(StockMove.move_type == 'ADJ')
     ).all()
     
     return {
         "total_products": len(total_products),
         "low_stock": low_stock,
         "incoming": len(incoming),
-        "outgoing": len(outgoing)
+        "outgoing": len(outgoing),
+        "internal_transfers": len(internal_transfers),
+        "adjustments": len(adjustments)
     }

@@ -9,6 +9,8 @@ class StockMoveBase(BaseModel):
     dest_location: Optional[str] = None
     source_warehouse_id: Optional[int] = None
     dest_warehouse_id: Optional[int] = None
+    vendor_id: Optional[int] = None
+    customer_id: Optional[int] = None
     move_type: str
 
 class StockMoveCreate(StockMoveBase):
