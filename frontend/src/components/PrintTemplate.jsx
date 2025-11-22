@@ -1,6 +1,6 @@
 import React from 'react';
 
-const PrintTemplate = React.forwardRef(({ move, product, vendor, customer, warehouse }, ref) => {
+const PrintTemplate = ({ move, product, vendor, customer, warehouse }) => {
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
@@ -17,8 +17,10 @@ const PrintTemplate = React.forwardRef(({ move, product, vendor, customer, wareh
     return labels[type] || type;
   };
 
+  if (!move) return null;
+
   return (
-    <div ref={ref} className="p-8 bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
+    <div className="p-8 bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
       <div className="border-4 border-black p-6">
         {/* Header */}
         <div className="border-b-4 border-black pb-4 mb-4">
@@ -108,9 +110,7 @@ const PrintTemplate = React.forwardRef(({ move, product, vendor, customer, wareh
       </div>
     </div>
   );
-});
-
-PrintTemplate.displayName = 'PrintTemplate';
+};
 
 export default PrintTemplate;
 

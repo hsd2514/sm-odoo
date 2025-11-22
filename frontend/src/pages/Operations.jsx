@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
 import api from '../services/api';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -8,6 +7,7 @@ import Select from '../components/ui/Select';
 import StatusBadge from '../components/ui/StatusBadge';
 import DataTable from '../components/ui/DataTable';
 import PrintTemplate from '../components/PrintTemplate';
+import { printMoveDocument } from '../utils/printUtils';
 import { ArrowRightLeft, ArrowDownLeft, ArrowUpRight, ClipboardCheck, Printer } from 'lucide-react';
 
 const Operations = () => {
@@ -142,6 +142,14 @@ const Operations = () => {
       console.error("Failed to update status", error);
       alert(error.response?.data?.detail || "Failed to update status");
     }
+  };
+
+  const openPrintDialog = (move) => {
+    setPrintMove(move);
+    // Wait a bit for state update, then print
+    setTimeout(() => {
+      printMoveDocument(move, products, vendors, customers, warehouses);
+    }, 100);
   };
 
 
@@ -395,6 +403,14 @@ const Operations = () => {
                             </td>
                             <td className="p-4">
                                 <div className="flex flex-wrap gap-2">
+                                    <Button 
+                                        variant="secondary" 
+                                        className="text-xs py-1 px-2 flex items-center gap-1"
+                                        onClick={() => openPrintDialog(move)}
+                                    >
+                                        <Printer size={14} />
+                                        Print
+                                    </Button>
                                     {move.status === 'ready' && (
                                         <Button 
                                             variant="secondary" 
@@ -421,6 +437,30 @@ const Operations = () => {
                 }}
             />
         </div>
+      </div>
+
+      {/* Hidden Print Template - Always render wrapper so ref is always available */}
+      <div 
+        ref={printRef}
+        style={{ 
+          position: 'absolute', 
+          left: '-9999px', 
+          top: '-9999px', 
+          width: '210mm', 
+          minHeight: '297mm',
+          padding: '20mm',
+          backgroundColor: 'white'
+        }}
+      >
+        {printMove && (
+          <PrintTemplate
+            move={printMove}
+            product={products.find(p => p.id === printMove.product_id)}
+            vendor={vendors.find(v => v.id === printMove.vendor_id)}
+            customer={customers.find(c => c.id === printMove.customer_id)}
+            warehouse={warehouses.find(w => w.id === (printMove.source_warehouse_id || printMove.dest_warehouse_id))}
+          />
+        )}
       </div>
     </div>
   );
