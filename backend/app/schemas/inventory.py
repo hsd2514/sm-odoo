@@ -16,5 +16,6 @@ class StockMoveCreate(StockMoveBase):
 
 class StockMoveRead(StockMoveBase):
     id: int
+    reference: Optional[str] = None
     status: str
     created_at: datetime
