@@ -61,11 +61,18 @@ const Dashboard = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await api.get('/products/');
-      const uniqueCategories = [...new Set(response.data.map(p => p.category))];
-      setCategories(uniqueCategories);
+      const response = await api.get('/categories/');
+      setCategories(response.data.map(c => c.name));
     } catch (error) {
       console.error("Failed to fetch categories", error);
+      // Fallback: get from products if categories API fails
+      try {
+        const productsResponse = await api.get('/products/');
+        const uniqueCategories = [...new Set(productsResponse.data.map(p => p.category_name || p.category).filter(Boolean))];
+        setCategories(uniqueCategories);
+      } catch (e) {
+        console.error("Failed to fetch categories from products", e);
+      }
     }
   };
 
@@ -91,11 +98,12 @@ const Dashboard = () => {
   const getStockByCategoryData = () => {
     const categoryData = {};
     products.forEach(p => {
-      if (!categoryData[p.category]) {
-        categoryData[p.category] = { name: p.category, stock: 0, products: 0 };
+      const catName = p.category_name || p.category || 'Uncategorized';
+      if (!categoryData[catName]) {
+        categoryData[catName] = { name: catName, stock: 0, products: 0 };
       }
-      categoryData[p.category].stock += p.current_stock;
-      categoryData[p.category].products += 1;
+      categoryData[catName].stock += p.current_stock;
+      categoryData[catName].products += 1;
     });
     return Object.values(categoryData);
   };

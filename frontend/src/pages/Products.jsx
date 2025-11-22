@@ -3,20 +3,23 @@ import api from '../services/api';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import SearchBar from '../components/ui/SearchBar';
+import Select from '../components/ui/Select';
 import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 import { Plus } from 'lucide-react';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [newProduct, setNewProduct] = useState({ name: '', sku: '', category: '', uom: '', initial_stock: 0 });
+  const [newProduct, setNewProduct] = useState({ name: '', sku: '', category_id: '', uom: '', initial_stock: 0, min_stock_level: '' });
 
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
 
   useEffect(() => {
@@ -28,7 +31,8 @@ const Products = () => {
       const filtered = products.filter(p => 
         p.name.toLowerCase().includes(query) ||
         p.sku.toLowerCase().includes(query) ||
-        p.category.toLowerCase().includes(query)
+        (p.category_name && p.category_name.toLowerCase().includes(query)) ||
+        (p.category && p.category.toLowerCase().includes(query))
       );
       setFilteredProducts(filtered);
     }
@@ -46,16 +50,34 @@ const Products = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories/');
+      setCategories(response.data);
+    } catch (error) {
+      console.error("Failed to fetch categories", error);
+    }
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/products/', newProduct);
+      const productData = { ...newProduct };
+      if (!productData.category_id) {
+        delete productData.category_id;
+      }
+      if (!productData.min_stock_level || productData.min_stock_level === '') {
+        productData.min_stock_level = null;
+      } else {
+        productData.min_stock_level = parseInt(productData.min_stock_level);
+      }
+      await api.post('/products/', productData);
       setShowModal(false);
-      setNewProduct({ name: '', sku: '', category: '', uom: '', initial_stock: 0 });
+      setNewProduct({ name: '', sku: '', category_id: '', uom: '', initial_stock: 0, min_stock_level: '' });
       fetchProducts();
     } catch (error) {
       console.error("Failed to create product", error);
-      alert("Failed to create product");
+      alert(error.response?.data?.detail || "Failed to create product");
     }
   };
 
@@ -81,22 +103,29 @@ const Products = () => {
           { header: 'Name' },
           { header: 'Category' },
           { header: 'Stock' },
+          { header: 'Min Level' },
           { header: 'UoM' }
         ]}
         data={filteredProducts}
         loading={loading}
         emptyMessage={searchQuery ? 'No products found matching your search.' : 'No products found.'}
-        renderRow={(product) => (
-          <tr key={product.id} className="border-b-2 border-black hover:bg-gray-50">
-            <td className="p-4 border-r-2 border-black font-bold">{product.sku}</td>
-            <td className="p-4 border-r-2 border-black">{product.name}</td>
-            <td className="p-4 border-r-2 border-black">{product.category}</td>
-            <td className={`p-4 border-r-2 border-black font-bold ${product.current_stock < 10 ? 'text-red-600' : 'text-green-600'}`}>
-              {product.current_stock}
-            </td>
-            <td className="p-4">{product.uom}</td>
-          </tr>
-        )}
+        renderRow={(product) => {
+          const isLowStock = product.min_stock_level !== null && product.min_stock_level !== undefined
+            ? product.current_stock < product.min_stock_level
+            : product.current_stock < 10;
+          return (
+            <tr key={product.id} className="border-b-2 border-black hover:bg-gray-50">
+              <td className="p-4 border-r-2 border-black font-bold">{product.sku}</td>
+              <td className="p-4 border-r-2 border-black">{product.name}</td>
+              <td className="p-4 border-r-2 border-black">{product.category_name || product.category || '-'}</td>
+              <td className={`p-4 border-r-2 border-black font-bold ${isLowStock ? 'text-red-600' : 'text-green-600'}`}>
+                {product.current_stock}
+              </td>
+              <td className="p-4 border-r-2 border-black">{product.min_stock_level ?? '-'}</td>
+              <td className="p-4">{product.uom}</td>
+            </tr>
+          );
+        }}
       />
 
       <Modal
@@ -119,7 +148,16 @@ const Products = () => {
             </div>
             <div>
               <label className="block font-bold mb-1">Category</label>
-              <Input value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} required />
+              <Select
+                value={newProduct.category_id}
+                onChange={(e) => setNewProduct({...newProduct, category_id: e.target.value})}
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -129,8 +167,18 @@ const Products = () => {
             </div>
             <div>
               <label className="block font-bold mb-1">Initial Stock</label>
-              <Input type="number" value={newProduct.initial_stock} onChange={e => setNewProduct({...newProduct, initial_stock: parseInt(e.target.value)})} />
+              <Input type="number" value={newProduct.initial_stock} onChange={e => setNewProduct({...newProduct, initial_stock: parseInt(e.target.value) || 0})} />
             </div>
+          </div>
+          <div>
+            <label className="block font-bold mb-1">Minimum Stock Level (Optional)</label>
+            <Input 
+              type="number" 
+              value={newProduct.min_stock_level} 
+              onChange={e => setNewProduct({...newProduct, min_stock_level: e.target.value ? parseInt(e.target.value) : null})} 
+              placeholder="Leave empty to use default (10)"
+            />
+            <p className="text-sm text-gray-600 mt-1">Alert when stock falls below this level</p>
           </div>
         </form>
       </Modal>

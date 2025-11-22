@@ -79,11 +79,23 @@ def get_stats(
     from app.models.inventory import StockMove, Warehouse
     
     # Get products with optional category filter
+    from app.models.category import Category
     product_query = select(Product)
     if category:
-        product_query = product_query.where(Product.category == category)
+        # Try to find category by name first (for backward compatibility)
+        cat = session.exec(select(Category).where(Category.name == category)).first()
+        if cat:
+            product_query = product_query.where(Product.category_id == cat.id)
+        else:
+            # Fallback to old category field
+            product_query = product_query.where(Product.category == category)
     total_products = session.exec(product_query).all()
-    low_stock = len([p for p in total_products if p.current_stock < 10])
+    # Count products below minimum stock level (or < 10 if no min_stock_level set)
+    low_stock = len([
+        p for p in total_products 
+        if (p.min_stock_level is not None and p.current_stock < p.min_stock_level) or 
+           (p.min_stock_level is None and p.current_stock < 10)
+    ])
     
     # Count moves with filters
     incoming_query = select(StockMove).where(StockMove.move_type == 'IN')
