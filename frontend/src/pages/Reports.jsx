@@ -6,21 +6,51 @@ import { FileDown } from 'lucide-react';
 const Reports = () => {
   const handleExport = async (endpoint, filename) => {
     try {
-      const response = await api.get(endpoint, { responseType: 'blob' });
-      // Create blob with explicit CSV MIME type
-      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      const response = await api.get(endpoint, { 
+        responseType: 'blob',
+        headers: {
+          'Accept': 'text/csv'
+        }
+      });
+      
+      // Check if response is actually a blob
+      let blob;
+      if (response.data instanceof Blob) {
+        blob = response.data;
+      } else {
+        // If axios wrapped it, extract the actual blob
+        blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      }
+      
+      // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = filename; // Use .download instead of .setAttribute
+      link.setAttribute('download', filename);
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
+      
       // Clean up
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
     } catch (error) {
       console.error("Failed to export", error);
-      alert("Failed to export data: " + (error.response?.data?.detail || error.message));
+      // Try to extract error message from blob response if it's an error
+      if (error.response?.data instanceof Blob) {
+        error.response.data.text().then(text => {
+          try {
+            const errorData = JSON.parse(text);
+            alert("Failed to export data: " + (errorData.detail || errorData.message || "Unknown error"));
+          } catch {
+            alert("Failed to export data. Please check your connection and try again.");
+          }
+        });
+      } else {
+        alert("Failed to export data: " + (error.response?.data?.detail || error.message || "Unknown error"));
+      }
     }
   };
 

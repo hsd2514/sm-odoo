@@ -23,10 +23,16 @@ def export_products_csv(session: Session = Depends(get_session), current_user: U
         writer.writerow([p.id, p.name, p.sku, p.category, p.uom, p.current_stock])
     
     output.seek(0)
+    csv_content = output.getvalue()
+    output.close()
+    
     return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=products.csv"}
+        iter([csv_content]),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": "attachment; filename=products.csv",
+            "Content-Type": "text/csv; charset=utf-8"
+        }
     )
 
 @router.get("/stock-moves/csv")
@@ -40,22 +46,30 @@ def export_stock_moves_csv(session: Session = Depends(get_session), current_user
     
     for m in moves:
         product_name = products.get(m.product_id).name if m.product_id in products else f"Product #{m.product_id}"
+        source = m.source_location or (f"WH#{m.source_warehouse_id}" if m.source_warehouse_id else "")
+        dest = m.dest_location or (f"WH#{m.dest_warehouse_id}" if m.dest_warehouse_id else "")
         writer.writerow([
             m.id, 
             product_name, 
             m.move_type, 
             m.quantity, 
-            m.source_location or f"WH#{m.source_warehouse_id}" if m.source_warehouse_id else "", 
-            m.dest_location or f"WH#{m.dest_warehouse_id}" if m.dest_warehouse_id else "",
+            source,
+            dest,
             m.status,
-            m.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            m.created_at.strftime('%Y-%m-%d %H:%M:%S') if m.created_at else ""
         ])
     
     output.seek(0)
+    csv_content = output.getvalue()
+    output.close()
+    
     return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=stock_moves.csv"}
+        iter([csv_content]),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": "attachment; filename=stock_moves.csv",
+            "Content-Type": "text/csv; charset=utf-8"
+        }
     )
 
 @router.get("/warehouse-stock/csv")
@@ -76,8 +90,14 @@ def export_warehouse_stock_csv(session: Session = Depends(get_session), current_
         writer.writerow([product_name, warehouse_name, warehouse_location, s.quantity])
     
     output.seek(0)
+    csv_content = output.getvalue()
+    output.close()
+    
     return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=warehouse_stock.csv"}
+        iter([csv_content]),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": "attachment; filename=warehouse_stock.csv",
+            "Content-Type": "text/csv; charset=utf-8"
+        }
     )
