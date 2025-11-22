@@ -6,6 +6,8 @@
   --color-neo-accent: #4ecdc4;
   --color-neo-dark: #1a1a1a;
   --color-neo-white: #ffffff;
+  --shadow-neo: 4px 4px 0px 0px rgba(0,0,0,1);
+  --shadow-neo-sm: 2px 2px 0px 0px rgba(0,0,0,1);
 }
 
 body {
@@ -35,11 +37,14 @@ body {
 
 .neo-input {
   border: 2px solid var(--color-neo-dark);
-  box-shadow: var(--shadow-neo-sm);
+  box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
   padding: 0.5rem;
   outline: none;
+  background-color: var(--color-neo-white);
+  font-weight: 500;
 }
 
 .neo-input:focus {
-  box-shadow: var(--shadow-neo);
+  box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+  transform: translate(-2px, -2px);
 }
