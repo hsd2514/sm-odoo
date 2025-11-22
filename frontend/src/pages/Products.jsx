@@ -6,18 +6,36 @@ import { Plus, Search } from 'lucide-react';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', sku: '', category: '', uom: '', initial_stock: 0 });
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    // Filter products based on search query
+    if (!searchQuery.trim()) {
+      setFilteredProducts(products);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = products.filter(p => 
+        p.name.toLowerCase().includes(query) ||
+        p.sku.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query)
+      );
+      setFilteredProducts(filtered);
+    }
+  }, [searchQuery, products]);
+
   const fetchProducts = async () => {
     try {
       const response = await api.get('/products/');
       setProducts(response.data);
+      setFilteredProducts(response.data);
     } catch (error) {
       console.error("Failed to fetch products", error);
     } finally {
@@ -47,9 +65,14 @@ const Products = () => {
         </Button>
       </div>
 
-      <div className="neo-box p-4 mb-8 flex items-center gap-4">
-        <Search size={24} />
-        <Input placeholder="Search products by name or SKU..." className="border-none shadow-none focus:shadow-none" />
+      <div className="neo-box p-4 mb-8 flex items-center gap-4 bg-white">
+        <Search size={24} className="flex-shrink-0" />
+        <Input 
+          placeholder="Search products by name, SKU, or category..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1" 
+        />
       </div>
 
       {loading ? (
@@ -67,7 +90,14 @@ const Products = () => {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
+              {filteredProducts.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="p-8 text-center text-gray-500 italic">
+                    {searchQuery ? 'No products found matching your search.' : 'No products found.'}
+                  </td>
+                </tr>
+              ) : (
+                filteredProducts.map((product) => (
                 <tr key={product.id} className="border-b-2 border-black hover:bg-gray-50">
                   <td className="p-4 border-r-2 border-black font-bold">{product.sku}</td>
                   <td className="p-4 border-r-2 border-black">{product.name}</td>
@@ -77,7 +107,8 @@ const Products = () => {
                   </td>
                   <td className="p-4">{product.uom}</td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>

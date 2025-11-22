@@ -10,6 +10,8 @@ const Operations = () => {
   const [warehouses, setWarehouses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('IN'); // IN, OUT, INT, ADJ
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [newMove, setNewMove] = useState({ 
     product_id: '', 
     quantity: 0, 
@@ -23,11 +25,17 @@ const Operations = () => {
     fetchMoves();
     fetchProducts();
     fetchWarehouses();
-  }, []);
+  }, [activeTab, statusFilter, searchQuery]);
 
   const fetchMoves = async () => {
     try {
-      const response = await api.get('/operations/moves');
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (activeTab) params.append('move_type', activeTab);
+      if (statusFilter) params.append('status', statusFilter);
+      if (searchQuery) params.append('search', searchQuery);
+      
+      const response = await api.get(`/operations/moves?${params.toString()}`);
       setMoves(response.data);
     } catch (error) {
       console.error("Failed to fetch moves", error);
@@ -90,6 +98,38 @@ const Operations = () => {
     }
   };
 
+  const handleStatusChange = async (moveId, newStatus) => {
+    try {
+      await api.post(`/operations/moves/${moveId}/status?new_status=${newStatus}`);
+      fetchMoves();
+    } catch (error) {
+      console.error("Failed to update status", error);
+      alert(error.response?.data?.detail || "Failed to update status");
+    }
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      'draft': 'bg-gray-200',
+      'waiting': 'bg-yellow-200',
+      'ready': 'bg-blue-200',
+      'done': 'bg-green-200',
+      'cancelled': 'bg-red-200'
+    };
+    return colors[status] || 'bg-gray-200';
+  };
+
+  const getNextStatus = (currentStatus) => {
+    const transitions = {
+      'draft': ['waiting', 'cancelled'],
+      'waiting': ['ready', 'cancelled'],
+      'ready': ['done', 'cancelled'],
+      'done': [],
+      'cancelled': ['draft']
+    };
+    return transitions[currentStatus] || [];
+  };
+
   const tabs = [
     { id: 'IN', label: 'Receipts', icon: ArrowDownLeft, color: 'bg-green-200' },
     { id: 'OUT', label: 'Deliveries', icon: ArrowUpRight, color: 'bg-yellow-200' },
@@ -107,7 +147,10 @@ const Operations = () => {
             return (
                 <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setStatusFilter(''); // Reset status filter when changing tab
+                    }}
                     className={`flex items-center gap-2 px-6 py-3 font-bold border-2 border-black transition-all ${
                         activeTab === tab.id 
                         ? `${tab.color} shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px]` 
@@ -119,6 +162,31 @@ const Operations = () => {
                 </button>
             );
         })}
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div className="neo-box p-4 mb-6 flex flex-col md:flex-row gap-4 items-center bg-white">
+        <div className="flex-1 w-full md:w-auto">
+          <Input 
+            placeholder="Search by reference, source, or destination..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="neo-input px-4 py-2 font-bold"
+          >
+            <option value="">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="waiting">Waiting</option>
+            <option value="ready">Ready</option>
+            <option value="done">Done</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -241,46 +309,68 @@ const Operations = () => {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-gray-100 border-b-2 border-black">
-                            <th className="p-4 font-black border-r-2 border-black">ID</th>
-                            <th className="p-4 font-black border-r-2 border-black">Type</th>
+                            <th className="p-4 font-black border-r-2 border-black">Reference</th>
                             <th className="p-4 font-black border-r-2 border-black">Product</th>
                             <th className="p-4 font-black border-r-2 border-black">Qty</th>
+                            <th className="p-4 font-black border-r-2 border-black">Source</th>
+                            <th className="p-4 font-black border-r-2 border-black">Destination</th>
                             <th className="p-4 font-black border-r-2 border-black">Status</th>
-                            <th className="p-4 font-black">Action</th>
+                            <th className="p-4 font-black">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {moves.filter(m => m.move_type === activeTab).map((move) => {
-                            const product = products.find(p => p.id === move.product_id);
-                            return (
-                                <tr key={move.id} className="border-b-2 border-black hover:bg-gray-50">
-                                    <td className="p-4 border-r-2 border-black font-mono">#{move.id}</td>
-                                    <td className="p-4 border-r-2 border-black font-bold">{move.move_type}</td>
-                                    <td className="p-4 border-r-2 border-black">{product?.name || move.product_id}</td>
-                                    <td className="p-4 border-r-2 border-black font-bold">{move.quantity}</td>
-                                    <td className="p-4 border-r-2 border-black">
-                                        <span className={`px-2 py-1 font-bold text-xs border-2 border-black ${move.status === 'done' ? 'bg-green-200' : 'bg-gray-200'}`}>
-                                            {move.status.toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td className="p-4">
-                                        {move.status !== 'done' && (
-                                            <Button 
-                                                variant="secondary" 
-                                                className="text-xs py-1 px-2"
-                                                onClick={() => handleValidate(move.id)}
-                                            >
-                                                Validate
-                                            </Button>
-                                        )}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                        {moves.filter(m => m.move_type === activeTab).length === 0 && (
+                        {moves.length === 0 ? (
                             <tr>
-                                <td colSpan="6" className="p-8 text-center text-gray-500 italic">No moves found.</td>
+                                <td colSpan="7" className="p-8 text-center text-gray-500 italic">No moves found.</td>
                             </tr>
+                        ) : (
+                            moves.map((move) => {
+                                const product = products.find(p => p.id === move.product_id);
+                                const nextStatuses = getNextStatus(move.status);
+                                return (
+                                    <tr key={move.id} className="border-b-2 border-black hover:bg-gray-50">
+                                        <td className="p-4 border-r-2 border-black font-mono font-bold">
+                                            {move.reference || `#${move.id}`}
+                                        </td>
+                                        <td className="p-4 border-r-2 border-black">{product?.name || `Product #${move.product_id}`}</td>
+                                        <td className="p-4 border-r-2 border-black font-bold">{move.quantity}</td>
+                                        <td className="p-4 border-r-2 border-black text-sm">
+                                            {move.source_location || (move.source_warehouse_id ? `WH#${move.source_warehouse_id}` : '-')}
+                                        </td>
+                                        <td className="p-4 border-r-2 border-black text-sm">
+                                            {move.dest_location || (move.dest_warehouse_id ? `WH#${move.dest_warehouse_id}` : '-')}
+                                        </td>
+                                        <td className="p-4 border-r-2 border-black">
+                                            <span className={`px-2 py-1 font-bold text-xs border-2 border-black ${getStatusColor(move.status)}`}>
+                                                {move.status.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex flex-wrap gap-2">
+                                                {move.status === 'ready' && (
+                                                    <Button 
+                                                        variant="secondary" 
+                                                        className="text-xs py-1 px-2"
+                                                        onClick={() => handleValidate(move.id)}
+                                                    >
+                                                        Validate
+                                                    </Button>
+                                                )}
+                                                {nextStatuses.map((nextStatus) => (
+                                                    <Button
+                                                        key={nextStatus}
+                                                        variant="secondary"
+                                                        className="text-xs py-1 px-2"
+                                                        onClick={() => handleStatusChange(move.id, nextStatus)}
+                                                    >
+                                                        → {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
