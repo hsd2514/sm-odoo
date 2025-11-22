@@ -82,6 +82,8 @@ Thumbs.db
 fix_stock.py
 testing_checklist.md
 GIT_COMMIT_PLAN.md
+REMAINING_FEATURES.md
+DATABASE_MIGRATION.md
 
 # Gemini artifacts
 .gemini/
