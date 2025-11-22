@@ -1,17 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import api from '../services/api';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import SearchBar from '../components/ui/SearchBar';
 import Select from '../components/ui/Select';
 import StatusBadge from '../components/ui/StatusBadge';
-import { ArrowRightLeft, ArrowDownLeft, ArrowUpRight, ClipboardCheck } from 'lucide-react';
+import DataTable from '../components/ui/DataTable';
+import PrintTemplate from '../components/PrintTemplate';
+import { ArrowRightLeft, ArrowDownLeft, ArrowUpRight, ClipboardCheck, Printer } from 'lucide-react';
 
 const Operations = () => {
   const [moves, setMoves] = useState([]);
   const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
+  const [vendors, setVendors] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [printMove, setPrintMove] = useState(null);
+  const printRef = useRef();
   const [activeTab, setActiveTab] = useState('IN'); // IN, OUT, INT, ADJ
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -21,13 +28,17 @@ const Operations = () => {
     source_location: '', 
     dest_location: '',
     source_warehouse_id: '',
-    dest_warehouse_id: ''
+    dest_warehouse_id: '',
+    vendor_id: '',
+    customer_id: ''
   });
 
   useEffect(() => {
     fetchMoves();
     fetchProducts();
     fetchWarehouses();
+    fetchVendors();
+    fetchCustomers();
   }, [activeTab, statusFilter, searchQuery]);
 
   const fetchMoves = async () => {
@@ -65,6 +76,24 @@ const Operations = () => {
     }
   };
 
+  const fetchVendors = async () => {
+    try {
+      const response = await api.get('/vendors/');
+      setVendors(response.data);
+    } catch (error) {
+      console.error("Failed to fetch vendors", error);
+    }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await api.get('/customers/');
+      setCustomers(response.data);
+    } catch (error) {
+      console.error("Failed to fetch customers", error);
+    }
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
@@ -73,7 +102,9 @@ const Operations = () => {
         move_type: activeTab, 
         product_id: parseInt(newMove.product_id),
         source_warehouse_id: newMove.source_warehouse_id ? parseInt(newMove.source_warehouse_id) : null,
-        dest_warehouse_id: newMove.dest_warehouse_id ? parseInt(newMove.dest_warehouse_id) : null
+        dest_warehouse_id: newMove.dest_warehouse_id ? parseInt(newMove.dest_warehouse_id) : null,
+        vendor_id: newMove.vendor_id ? parseInt(newMove.vendor_id) : null,
+        customer_id: newMove.customer_id ? parseInt(newMove.customer_id) : null
       };
       await api.post('/operations/moves', moveData);
       setNewMove({ 
@@ -82,7 +113,9 @@ const Operations = () => {
         source_location: '', 
         dest_location: '',
         source_warehouse_id: '',
-        dest_warehouse_id: ''
+        dest_warehouse_id: '',
+        vendor_id: '',
+        customer_id: ''
       });
       fetchMoves();
     } catch (error) {
@@ -212,36 +245,66 @@ const Operations = () => {
                         />
                     </div>
                     {activeTab === 'IN' && (
-                        <div>
-                            <label className="block font-bold mb-1">Destination Warehouse</label>
-                            <Select
-                                value={newMove.dest_warehouse_id}
-                                onChange={(e) => setNewMove({...newMove, dest_warehouse_id: e.target.value})}
-                                className="w-full"
-                                required
-                            >
-                                <option value="">Select Destination</option>
-                                {warehouses.map(w => (
-                                    <option key={w.id} value={w.id}>{w.name} ({w.location})</option>
-                                ))}
-                            </Select>
-                        </div>
+                        <>
+                            <div>
+                                <label className="block font-bold mb-1">Vendor (Optional)</label>
+                                <Select
+                                    value={newMove.vendor_id}
+                                    onChange={(e) => setNewMove({...newMove, vendor_id: e.target.value})}
+                                    className="w-full"
+                                >
+                                    <option value="">Select Vendor</option>
+                                    {vendors.map(v => (
+                                        <option key={v.id} value={v.id}>{v.name}</option>
+                                    ))}
+                                </Select>
+                            </div>
+                            <div>
+                                <label className="block font-bold mb-1">Destination Warehouse</label>
+                                <Select
+                                    value={newMove.dest_warehouse_id}
+                                    onChange={(e) => setNewMove({...newMove, dest_warehouse_id: e.target.value})}
+                                    className="w-full"
+                                    required
+                                >
+                                    <option value="">Select Destination</option>
+                                    {warehouses.map(w => (
+                                        <option key={w.id} value={w.id}>{w.name} ({w.location})</option>
+                                    ))}
+                                </Select>
+                            </div>
+                        </>
                     )}
                     {activeTab === 'OUT' && (
-                        <div>
-                            <label className="block font-bold mb-1">Source Warehouse</label>
-                            <Select
-                                value={newMove.source_warehouse_id}
-                                onChange={(e) => setNewMove({...newMove, source_warehouse_id: e.target.value})}
-                                className="w-full"
-                                required
-                            >
-                                <option value="">Select Source</option>
-                                {warehouses.map(w => (
-                                    <option key={w.id} value={w.id}>{w.name} ({w.location})</option>
-                                ))}
-                            </Select>
-                        </div>
+                        <>
+                            <div>
+                                <label className="block font-bold mb-1">Customer (Optional)</label>
+                                <Select
+                                    value={newMove.customer_id}
+                                    onChange={(e) => setNewMove({...newMove, customer_id: e.target.value})}
+                                    className="w-full"
+                                >
+                                    <option value="">Select Customer</option>
+                                    {customers.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </Select>
+                            </div>
+                            <div>
+                                <label className="block font-bold mb-1">Source Warehouse</label>
+                                <Select
+                                    value={newMove.source_warehouse_id}
+                                    onChange={(e) => setNewMove({...newMove, source_warehouse_id: e.target.value})}
+                                    className="w-full"
+                                    required
+                                >
+                                    <option value="">Select Source</option>
+                                    {warehouses.map(w => (
+                                        <option key={w.id} value={w.id}>{w.name} ({w.location})</option>
+                                    ))}
+                                </Select>
+                            </div>
+                        </>
                     )}
                     {activeTab === 'INT' && (
                         <>
@@ -298,74 +361,65 @@ const Operations = () => {
 
         {/* List Section */}
         <div className="lg:col-span-2">
-            <div className="neo-box p-0 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-gray-100 border-b-2 border-black">
-                            <th className="p-4 font-black border-r-2 border-black">Reference</th>
-                            <th className="p-4 font-black border-r-2 border-black">Product</th>
-                            <th className="p-4 font-black border-r-2 border-black">Qty</th>
-                            <th className="p-4 font-black border-r-2 border-black">Source</th>
-                            <th className="p-4 font-black border-r-2 border-black">Destination</th>
-                            <th className="p-4 font-black border-r-2 border-black">Status</th>
-                            <th className="p-4 font-black">Actions</th>
+            <DataTable
+                columns={[
+                    { header: 'Reference' },
+                    { header: 'Product' },
+                    { header: 'Qty' },
+                    { header: 'Source' },
+                    { header: 'Destination' },
+                    { header: 'Status' },
+                    { header: 'Actions' }
+                ]}
+                data={moves}
+                loading={loading}
+                emptyMessage="No moves found."
+                renderRow={(move) => {
+                    const product = products.find(p => p.id === move.product_id);
+                    const nextStatuses = getNextStatus(move.status);
+                    return (
+                        <tr key={move.id} className="border-b-2 border-black hover:bg-gray-50">
+                            <td className="p-4 border-r-2 border-black font-mono font-bold">
+                                {move.reference || `#${move.id}`}
+                            </td>
+                            <td className="p-4 border-r-2 border-black">{product?.name || `Product #${move.product_id}`}</td>
+                            <td className="p-4 border-r-2 border-black font-bold">{move.quantity}</td>
+                            <td className="p-4 border-r-2 border-black text-sm">
+                                {move.source_location || (move.source_warehouse_id ? `WH#${move.source_warehouse_id}` : '-')}
+                            </td>
+                            <td className="p-4 border-r-2 border-black text-sm">
+                                {move.dest_location || (move.dest_warehouse_id ? `WH#${move.dest_warehouse_id}` : '-')}
+                            </td>
+                            <td className="p-4 border-r-2 border-black">
+                                <StatusBadge status={move.status} />
+                            </td>
+                            <td className="p-4">
+                                <div className="flex flex-wrap gap-2">
+                                    {move.status === 'ready' && (
+                                        <Button 
+                                            variant="secondary" 
+                                            className="text-xs py-1 px-2"
+                                            onClick={() => handleValidate(move.id)}
+                                        >
+                                            Validate
+                                        </Button>
+                                    )}
+                                    {nextStatuses.map((nextStatus) => (
+                                        <Button
+                                            key={nextStatus}
+                                            variant="secondary"
+                                            className="text-xs py-1 px-2"
+                                            onClick={() => handleStatusChange(move.id, nextStatus)}
+                                        >
+                                            → {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {moves.length === 0 ? (
-                            <tr>
-                                <td colSpan="7" className="p-8 text-center text-gray-500 italic">No moves found.</td>
-                            </tr>
-                        ) : (
-                            moves.map((move) => {
-                                const product = products.find(p => p.id === move.product_id);
-                                const nextStatuses = getNextStatus(move.status);
-                                return (
-                                    <tr key={move.id} className="border-b-2 border-black hover:bg-gray-50">
-                                        <td className="p-4 border-r-2 border-black font-mono font-bold">
-                                            {move.reference || `#${move.id}`}
-                                        </td>
-                                        <td className="p-4 border-r-2 border-black">{product?.name || `Product #${move.product_id}`}</td>
-                                        <td className="p-4 border-r-2 border-black font-bold">{move.quantity}</td>
-                                        <td className="p-4 border-r-2 border-black text-sm">
-                                            {move.source_location || (move.source_warehouse_id ? `WH#${move.source_warehouse_id}` : '-')}
-                                        </td>
-                                        <td className="p-4 border-r-2 border-black text-sm">
-                                            {move.dest_location || (move.dest_warehouse_id ? `WH#${move.dest_warehouse_id}` : '-')}
-                                        </td>
-                                        <td className="p-4 border-r-2 border-black">
-                                        <StatusBadge status={move.status} />
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex flex-wrap gap-2">
-                                                {move.status === 'ready' && (
-                                                    <Button 
-                                                        variant="secondary" 
-                                                        className="text-xs py-1 px-2"
-                                                        onClick={() => handleValidate(move.id)}
-                                                    >
-                                                        Validate
-                                                    </Button>
-                                                )}
-                                                {nextStatuses.map((nextStatus) => (
-                                                    <Button
-                                                        key={nextStatus}
-                                                        variant="secondary"
-                                                        className="text-xs py-1 px-2"
-                                                        onClick={() => handleStatusChange(move.id, nextStatus)}
-                                                    >
-                                                        → {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
-                                                    </Button>
-                                                ))}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                    );
+                }}
+            />
         </div>
       </div>
     </div>

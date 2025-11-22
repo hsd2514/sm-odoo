@@ -9,6 +9,7 @@ import Products from './pages/Products';
 import Operations from './pages/Operations';
 import MoveHistory from './pages/MoveHistory';
 import Vendors from './pages/Vendors';
+import Customers from './pages/Customers';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 
@@ -40,6 +41,7 @@ const App = () => {
             <Route path="operations" element={<Operations />} />
             <Route path="move-history" element={<MoveHistory />} />
             <Route path="vendors" element={<Vendors />} />
+            <Route path="customers" element={<Customers />} />
             <Route path="settings" element={<Settings />} />
             <Route path="reports" element={<Reports />} />
           </Route>

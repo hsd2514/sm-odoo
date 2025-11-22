@@ -17,7 +17,7 @@ class StockMove(SQLModel, table=True):
     source_warehouse_id: Optional[int] = Field(default=None, foreign_key="warehouse.id")
     dest_warehouse_id: Optional[int] = Field(default=None, foreign_key="warehouse.id")
     vendor_id: Optional[int] = Field(default=None) # For Receipts (IN) - foreign_key="vendor.id" after migration
-    customer_id: Optional[int] = Field(default=None) # For Deliveries (OUT) - will create customer model later
+    customer_id: Optional[int] = Field(default=None) # For Deliveries (OUT) - foreign_key="customer.id" after migration
     move_type: str # IN, OUT, INT, ADJ
     status: str = "draft" # draft, waiting, ready, done, cancelled
     created_at: datetime = Field(default_factory=datetime.utcnow)
