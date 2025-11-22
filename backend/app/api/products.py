@@ -4,6 +4,7 @@ from typing import List, Optional
 from app.core.database import get_session
 from app.models.product import Product
 from app.models.category import Category
+from app.models.inventory import ProductStock, Warehouse
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.api.deps import get_current_user
 from app.models.user import User
@@ -177,3 +178,36 @@ def delete_product(product_id: int, session: Session = Depends(get_session), cur
     session.delete(product)
     session.commit()
     return {"message": "Product deleted successfully"}
+
+@router.get("/{product_id}/stock-locations")
+def get_product_stock_locations(product_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    """Get stock breakdown per warehouse for a product"""
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Get all stock entries for this product
+    stock_entries = session.exec(
+        select(ProductStock).where(ProductStock.product_id == product_id)
+    ).all()
+    
+    # Get warehouse details
+    warehouses = {w.id: w for w in session.exec(select(Warehouse)).all()}
+    
+    result = []
+    for stock in stock_entries:
+        warehouse = warehouses.get(stock.warehouse_id)
+        if warehouse:
+            result.append({
+                "warehouse_id": stock.warehouse_id,
+                "warehouse_name": warehouse.name,
+                "warehouse_location": warehouse.location,
+                "quantity": stock.quantity
+            })
+    
+    return {
+        "product_id": product_id,
+        "product_name": product.name,
+        "total_stock": product.current_stock,
+        "stock_by_location": result
+    }

@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, create_engine, Session
 from app.core.config import settings
 
 # Import all models to ensure they're registered with SQLModel
-from app.models import user, product, inventory, vendor, customer, category
+from app.models import user, product, inventory, vendor, customer, category, otp
 
 engine = create_engine(settings.DATABASE_URL, echo=True)  # SQL logging enabled
 
