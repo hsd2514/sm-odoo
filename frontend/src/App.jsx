@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import Layout from './components/Layout';
 import Products from './pages/Products';
 import Operations from './pages/Operations';
+import MoveHistory from './pages/MoveHistory';
+import Vendors from './pages/Vendors';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 
@@ -36,6 +38,8 @@ const App = () => {
             <Route index element={<Dashboard />} />
             <Route path="products" element={<Products />} />
             <Route path="operations" element={<Operations />} />
+            <Route path="move-history" element={<MoveHistory />} />
+            <Route path="vendors" element={<Vendors />} />
             <Route path="settings" element={<Settings />} />
             <Route path="reports" element={<Reports />} />
           </Route>
